@@ -1,0 +1,37 @@
+[lumi-server] Installing dependencies...
+bun install v1.3.10 (30e609e0)
+
+Checked 170 installs across 166 packages (no changes) [18.00ms]
+[lumi-server] Running bun run dev...
+$ bun --hot index.ts
+107 |         return opts[p] || p;
+108 |       })
+109 |     );
+110 |     tries.push(n);
+111 |     try {
+112 |       b = opts.path ? requireFunc.resolve(n) : requireFunc(n);
+                                                     ^
+error: 'better-sqlite3' is not yet supported in Bun.
+Track the status in https://github.com/oven-sh/bun/issues/4290
+In the meantime, you could try bun:sqlite which has a similar API.
+ code: "ERR_DLOPEN_FAILED"
+
+      at bindings (/home/z/my-project/mini-services/lumi-server/node_modules/bindings/bindings.js:112:48)
+      at new Database (/home/z/my-project/mini-services/lumi-server/node_modules/better-sqlite3/lib/database.js:48:29)
+      at /home/z/my-project/mini-services/lumi-server/index.ts:37:12
+      at loadAndEvaluateModule (2:1)
+35 | const dbPath = path.join(process.cwd(), 'data', 'lumi.db');
+36 | fs.mkdirSync(path.dirname(dbPath), { recursive: true });
+37 | const db = new Database(dbPath);
+38 | 
+39 | // Initialize database tables
+40 | db.run(`
+        ^
+SQLiteError: database is locked
+      errno: 5,
+ byteOffset: -1,
+       code: "SQLITE_BUSY"
+
+      at run (bun:sqlite:336:21)
+      at /home/z/my-project/mini-services/lumi-server/index.ts:40:4
+      at loadAndEvaluateModule (2:1)
