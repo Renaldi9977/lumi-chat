@@ -14,10 +14,11 @@ const app = express();
 const httpServer = createServer(app);
 const io = new Server(httpServer, {
   cors: {
-    origin: ['http://localhost:3000', 'http://127.0.0.1:3000'],
-    methods: ['GET', 'POST'],
+    origin: true, // Allow all origins
+    methods: ['GET', 'POST', 'PUT', 'DELETE'],
     credentials: true,
   },
+  allowEIO3: true, // Support older clients
 });
 
 const PORT = 3030;
@@ -25,7 +26,7 @@ const JWT_SECRET = process.env.JWT_SECRET || 'lumi-secret-key-2024';
 
 // Middleware
 app.use(cors({
-  origin: ['http://localhost:3000', 'http://127.0.0.1:3000'],
+  origin: true, // Allow all origins
   credentials: true,
 }));
 app.use(express.json({ limit: '50mb' }));

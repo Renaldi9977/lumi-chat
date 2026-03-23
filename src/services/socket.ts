@@ -1,11 +1,33 @@
-import { io, Socket } from 'socket.io-client';
-import type { Message, User, CallSession } from '@/types';
+import type { Message, CallSession } from '@/types';
+import type { Socket } from 'socket.io-client';
 
 type MessageHandler = (message: Message) => void;
 type StatusHandler = (data: { userId: string; status: string; lastSeen?: string }) => void;
 type TypingHandler = (data: { userId: string; isTyping: boolean; groupId?: string }) => void;
 type CallHandler = (data: CallSession) => void;
 type SignalHandler = (data: { callId: string; signal: any; fromUserId?: string }) => void;
+
+// Get Socket URL from environment variable or detect automatically
+const getSocketUrl = (): string => {
+  // Check for environment variable first
+  if (process.env.NEXT_PUBLIC_API_URL) {
+    return process.env.NEXT_PUBLIC_API_URL;
+  }
+  
+  // For browser environment
+  if (typeof window !== 'undefined') {
+    // Check if we're on Replit (has XTransformPort support)
+    const hostname = window.location.hostname;
+    const protocol = window.location.protocol;
+    if (hostname.includes('replit.dev') || hostname.includes('repl.co')) {
+      // On Replit, use the same origin with port transform
+      return `${protocol}//${hostname}`;
+    }
+  }
+  
+  // Default to localhost for development
+  return 'http://localhost:3030';
+};
 
 class SocketService {
   private socket: Socket | null = null;
@@ -19,19 +41,33 @@ class SocketService {
   private groupRemoveHandlers: ((data: { groupId: string }) => void)[] = [];
 
   connect(token: string): Promise<boolean> {
-    return new Promise((resolve) => {
+    return new Promise(async (resolve) => {
+      // SSR check
+      if (typeof window === 'undefined') {
+        resolve(false);
+        return;
+      }
+
       if (this.socket?.connected) {
         resolve(true);
         return;
       }
 
-      this.socket = io('/?XTransformPort=3030', {
+      // Dynamic import for client-side only
+      const { io } = await import('socket.io-client');
+
+      const socketUrl = getSocketUrl();
+      const isReplit = typeof window !== 'undefined' && 
+        (window.location.hostname.includes('replit.dev') || window.location.hostname.includes('repl.co'));
+
+      this.socket = io(isReplit ? `${socketUrl}/?XTransformPort=3030` : socketUrl, {
         transports: ['websocket', 'polling'],
         auth: { token },
         reconnection: true,
         reconnectionAttempts: 10,
         reconnectionDelay: 1000,
         timeout: 10000,
+        forceNew: true,
       });
 
       this.socket.on('connect', () => {

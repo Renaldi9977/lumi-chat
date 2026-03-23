@@ -10,7 +10,28 @@ import type {
   ApiResponse 
 } from '@/types';
 
-const API_BASE = '/api';
+// Get API base URL from environment variable or detect automatically
+const getApiBaseUrl = (): string => {
+  // Check for environment variable first
+  if (process.env.NEXT_PUBLIC_API_URL) {
+    return process.env.NEXT_PUBLIC_API_URL;
+  }
+  
+  // For browser environment
+  if (typeof window !== 'undefined') {
+    // Check if we're on Replit (has XTransformPort support)
+    const hostname = window.location.hostname;
+    if (hostname.includes('replit.dev') || hostname.includes('repl.co')) {
+      // On Replit, use relative path with port transform
+      return '';
+    }
+  }
+  
+  // Default to localhost for development
+  return 'http://localhost:3030';
+};
+
+const API_BASE_URL = getApiBaseUrl();
 
 class ApiService {
   private getToken(): string | null {
@@ -27,12 +48,21 @@ class ApiService {
     return null;
   }
 
+  private getUrl(endpoint: string): string {
+    // If we have a base URL, use it directly
+    if (API_BASE_URL) {
+      return `${API_BASE_URL}/api${endpoint}`;
+    }
+    // Otherwise use relative path with Replit port transform
+    return `/api${endpoint}?XTransformPort=3030`;
+  }
+
   private async request<T>(
     endpoint: string,
     options: RequestInit = {}
   ): Promise<T> {
     const token = this.getToken();
-    const url = `${API_BASE}${endpoint}?XTransformPort=3030`;
+    const url = this.getUrl(endpoint);
     
     const headers: HeadersInit = {
       'Content-Type': 'application/json',
@@ -47,6 +77,14 @@ class ApiService {
       ...options,
       headers,
     });
+
+    // Check if response is JSON
+    const contentType = response.headers.get('content-type');
+    if (!contentType || !contentType.includes('application/json')) {
+      const text = await response.text();
+      console.error('Non-JSON response:', text.substring(0, 200));
+      throw new Error('Server returned non-JSON response. Backend may not be running.');
+    }
 
     const data = await response.json();
 
@@ -99,7 +137,7 @@ class ApiService {
     formData.append('avatar', file);
 
     const token = this.getToken();
-    const url = `${API_BASE}/auth/avatar?XTransformPort=3030`;
+    const url = this.getUrl('/auth/avatar');
 
     const response = await fetch(url, {
       method: 'POST',
@@ -159,7 +197,7 @@ class ApiService {
     formData.append('file', file);
 
     const token = this.getToken();
-    const url = `${API_BASE}/messages/upload?XTransformPort=3030`;
+    const url = this.getUrl('/messages/upload');
 
     const response = await fetch(url, {
       method: 'POST',
